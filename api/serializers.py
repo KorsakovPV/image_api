@@ -46,7 +46,6 @@ class PostsSerializer(serializers.ModelSerializer):
         for attr, value in m2m_fields:
             field = getattr(instance, attr)
             field.set(value)
-
         return instance
 
     def validate(self, data):
