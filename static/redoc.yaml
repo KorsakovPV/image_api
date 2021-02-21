@@ -1,0 +1,211 @@
+---
+openapi: 3.0.2
+info:
+  title: Your Project
+  description: API for all things …
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/pavelkpv/image_api/1.0.0
+  description: SwaggerHub API Auto Mocking
+paths:
+  /api/v1/posts/:
+    get:
+      tags:
+      - api
+      operationId: listPosts
+      parameters: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Posts'
+    post:
+      tags:
+      - api
+      operationId: createPost
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Posts'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Posts'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Posts'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Posts'
+  /api/v1/posts/{id}/:
+    get:
+      tags:
+      - api
+      operationId: retrievePost
+      parameters:
+      - name: id
+        in: path
+        description: A unique integer value identifying this post.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Posts'
+    put:
+      tags:
+      - api
+      operationId: updatePost
+      parameters:
+      - name: id
+        in: path
+        description: A unique integer value identifying this post.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Posts'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Posts'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Posts'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Posts'
+    delete:
+      tags:
+      - api
+      operationId: destroyPost
+      parameters:
+      - name: id
+        in: path
+        description: A unique integer value identifying this post.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204": {}
+    patch:
+      tags:
+      - api
+      operationId: partialUpdatePost
+      parameters:
+      - name: id
+        in: path
+        description: A unique integer value identifying this post.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Posts'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Posts'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Posts'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Posts'
+  /api/v1/api-token-auth/:
+    post:
+      tags:
+      - api
+      operationId: createAuthToken
+      parameters: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+components:
+  schemas:
+    Posts:
+      required:
+      - text
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        text:
+          type: string
+        pub_date:
+          type: string
+          format: date-time
+          readOnly: true
+        author:
+          type: string
+          readOnly: true
+        post_images:
+          type: array
+          readOnly: true
+          items:
+            $ref: '#/components/schemas/Posts_post_images'
+    AuthToken:
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        token:
+          type: string
+          readOnly: true
+    Posts_post_images:
+      required:
+      - image
+      type: object
+      properties:
+        image:
+          type: string
+          format: binary
