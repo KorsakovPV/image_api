@@ -1,8 +1,8 @@
 import base64
-import json
+from io import BytesIO
 
 from django.test import Client, TestCase
-from django.urls import reverse, path, include
+from django.urls import reverse
 import factory
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -10,8 +10,10 @@ from rest_framework.authtoken.models import Token
 from image_api.settings import BASE_DIR
 from users.models import User
 from content.models import Post, Image
-from rest_framework.test import APIRequestFactory, APIClient, APITestCase, \
-    URLPatternsTestCase
+from rest_framework.test import APIRequestFactory, APIClient, APITestCase
+
+from django.core.files import File
+import PIL
 
 
 class UserFactory(factory.Factory):
@@ -63,7 +65,6 @@ class PostTests(APITestCase):
         self.token = Token.objects.create(user=self.user).key
         self.client_authentication.credentials(
             HTTP_AUTHORIZATION='Token ' + self.token)
-        self.path_img = f'{BASE_DIR}/api/tests/test_data/'
 
     def test_post_create(self):
         url = reverse('posts-list')
@@ -128,7 +129,24 @@ class PostTests(APITestCase):
         response = self.client_authentication.delete(url, format='json')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-    # TODO Доделать тест. Тест не сохраняет картинку.
+
+class ImageTests(APITestCase):
+    @staticmethod
+    def get_image_file(name, ext='png', size=(50, 50), color=(256, 0, 0)):
+        file_obj = BytesIO()
+        image = PIL.Image.new("RGBA", size=size, color=color)
+        image.save(file_obj, ext)
+        file_obj.seek(0)
+        return File(file_obj, name=name)
+
+    def setUp(self):
+        self.client_authentication = APIClient()
+        self.user = _create_user()
+        self.token = Token.objects.create(user=self.user).key
+        self.client_authentication.credentials(
+            HTTP_AUTHORIZATION='Token ' + self.token)
+        self.path_img = f'{BASE_DIR}/api/tests/test_data/'
+
     def test_post_image(self):
         url = reverse('posts-list')
         image = f'{self.path_img}test_image_2.jpg'
@@ -136,12 +154,45 @@ class PostTests(APITestCase):
             image_bytes = img.read()
         im_b64 = base64.b64encode(image_bytes).decode("utf8")
         headers = {
-            'Content-type': 'multipart/form-data; boundary=<calculated when request is sent>',
-            'Accept': '*/*'}
+            'Content-type': 'multipart/form-data; boundary=<calculated when '
+                            'request is sent>',
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate, br'
+        }
         data = {
             'text': 'test post',
-            'post_images': [im_b64],
+            'post_images': {'test_image_2.jpg': im_b64},
         }
         response = self.client_authentication.post(url, data=data,
                                                    headers=headers,
-                                                   format='json')
+                                                   format='json'
+                                                   )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # TODO Доделать тест. Тест не сохраняет картинку.
+        self.assertEqual(Image.objects.all().count(), 0)
+
+    def test_post_image_mock(self):
+        url = reverse('posts-list')
+        image1 = self.get_image_file('image.png')
+        image2 = self.get_image_file('image2.png')
+        headers = {
+            'Content-type': 'multipart/form-data; boundary=<calculated when '
+                            'request is sent>',
+            'Accept': '*/*',
+            'Accept-Encoding': 'gzip, deflate, br'
+        }
+        data = {
+            'text': 'test post',
+            # 'post_images': {
+            #     'image1.png': image1,
+            #     'image2.png': image2,
+            # },
+        }
+        response = self.client_authentication.post(url,
+                                                   data=data,
+                                                   headers=headers,
+                                                   format='json'
+                                                   )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # TODO Доделать тест. Тест не сохраняет картинку.
+        self.assertEqual(Image.objects.all().count(), 0)
