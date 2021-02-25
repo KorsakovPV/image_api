@@ -1,19 +1,18 @@
-import base64
+import os
 from io import BytesIO
 
+from django.core.files import File
 from django.test import Client, TestCase
 from django.urls import reverse
+
 import factory
+import PIL
+from content.models import Image, Post
+from image_api.settings import BASE_DIR, MEDIA_URL
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-
-from image_api.settings import BASE_DIR
+from rest_framework.test import APIClient, APIRequestFactory, APITestCase
 from users.models import User
-from content.models import Post, Image
-from rest_framework.test import APIRequestFactory, APIClient, APITestCase
-
-from django.core.files import File
-import PIL
 
 
 class UserFactory(factory.Factory):
@@ -145,80 +144,39 @@ class ImageTests(APITestCase):
         self.token = Token.objects.create(user=self.user).key
         self.client_authentication.credentials(
             HTTP_AUTHORIZATION='Token ' + self.token)
-        self.path_img = f'{BASE_DIR}/api/tests/test_data/'
+        self.path_img = f'{BASE_DIR}{MEDIA_URL}posts/'
+        self.img_name = {'1': 'test_image_test_post_image1.png',
+                         '2': 'test_image_test_post_image2.png'}
 
     def test_post_image(self):
         url = reverse('posts-list')
-        image = f'{self.path_img}test_image_2.jpg'
-        with open(image, 'rb') as img:
-            # image_bytes = img.read()
-            # im_b64 = base64.b64encode(image_bytes).decode("utf8")
-            # headers = {
-            #     'Content-type': 'multipart/form-data; boundary=<calculated when '
-            #                     'request is sent>',
-            #     'Accept': '*/*',
-            #     'Accept-Encoding': 'gzip, deflate, br'
-            # }
-            data = {
-                'text': 'test post',
-                'post_images': img,
-            }
-            response = self.client_authentication.post(url, data=data,
-                                                       # headers=headers,
-                                                       # format='json'
-                                                       )
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            self.assertEqual(Image.objects.all().count(), 1)
+        image1 = self.get_image_file(self.img_name.get('1'))
+        data = {'text': 'test post',
+                'post_images': [image1], }
+        response = self.client_authentication.post(url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Image.objects.all().count(), 1)
 
-    def test_post_not_image(self):
+    def test_post_images(self):
         url = reverse('posts-list')
-        image = f'{self.path_img}test_image_4_invalide.txt'
-        with open(image, 'rb') as img:
-            data = {
-                'text': 'test post',
-                'post_images': img,
-            }
-            response = self.client_authentication.post(url, data=data)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            # TODO грузит неизображение как изображение
-            self.assertEqual(Image.objects.all().count(), 1)
-
+        image1 = self.get_image_file(self.img_name.get('1'))
+        image2 = self.get_image_file(self.img_name.get('2'))
+        data = {'text': 'test post',
+                'post_images': [image1, image2], }
+        response = self.client_authentication.post(url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Image.objects.all().count(), 2)
 
     def test_post_invalid_image(self):
         url = reverse('posts-list')
-        image = f'{self.path_img}test_image_1_6mb.jpeg'
-        with open(image, 'rb') as img:
-            data = {
-                'text': 'test post',
-                'post_images': img,
-            }
-            response = self.client_authentication.post(url, data=data)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            # TODO грузит не валидное изображение
-            self.assertEqual(Image.objects.all().count(), 1)
+        image1 = self.get_image_file(self.img_name, size=(10000, 5000))
+        data = {'text': 'test post',
+                'post_images': [image1], }
+        response = self.client_authentication.post(url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Image.objects.all().count(), 0)
 
-
-    def test_post_image_pil(self):
-        url = reverse('posts-list')
-        image1 = self.get_image_file('image.png')
-        image2 = self.get_image_file('image2.png')
-        headers = {
-            'Content-type': 'multipart/form-data; boundary=<calculated when '
-                            'request is sent>',
-            'Accept': '*/*',
-            'Accept-Encoding': 'gzip, deflate, br'
-        }
-        data = {
-            'text': 'test post',
-            'post_images': image1,
-            #     'image2.png': image2,
-            # },
-        }
-        response = self.client_authentication.post(url,
-                                                   data=data,
-                                                   headers=headers,
-                                                   # format='json'
-                                                   )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        # TODO Доделать тест. Тест не сохраняет картинку.
-        self.assertEqual(Image.objects.all().count(), 1)
+    def tearDown(self):
+        for i in self.img_name.keys():
+            if os.path.isfile(f'{self.path_img}{self.img_name.get(i)}'):
+                os.remove(f'{self.path_img}{self.img_name.get(i)}')
