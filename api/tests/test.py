@@ -151,27 +151,54 @@ class ImageTests(APITestCase):
         url = reverse('posts-list')
         image = f'{self.path_img}test_image_2.jpg'
         with open(image, 'rb') as img:
-            image_bytes = img.read()
-        im_b64 = base64.b64encode(image_bytes).decode("utf8")
-        headers = {
-            'Content-type': 'multipart/form-data; boundary=<calculated when '
-                            'request is sent>',
-            'Accept': '*/*',
-            'Accept-Encoding': 'gzip, deflate, br'
-        }
-        data = {
-            'text': 'test post',
-            'post_images': {'test_image_2.jpg': im_b64},
-        }
-        response = self.client_authentication.post(url, data=data,
-                                                   headers=headers,
-                                                   format='json'
-                                                   )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        # TODO Доделать тест. Тест не сохраняет картинку.
-        self.assertEqual(Image.objects.all().count(), 0)
+            # image_bytes = img.read()
+            # im_b64 = base64.b64encode(image_bytes).decode("utf8")
+            # headers = {
+            #     'Content-type': 'multipart/form-data; boundary=<calculated when '
+            #                     'request is sent>',
+            #     'Accept': '*/*',
+            #     'Accept-Encoding': 'gzip, deflate, br'
+            # }
+            data = {
+                'text': 'test post',
+                'post_images': img,
+            }
+            response = self.client_authentication.post(url, data=data,
+                                                       # headers=headers,
+                                                       # format='json'
+                                                       )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(Image.objects.all().count(), 1)
 
-    def test_post_image_mock(self):
+    def test_post_not_image(self):
+        url = reverse('posts-list')
+        image = f'{self.path_img}test_image_4_invalide.txt'
+        with open(image, 'rb') as img:
+            data = {
+                'text': 'test post',
+                'post_images': img,
+            }
+            response = self.client_authentication.post(url, data=data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            # TODO грузит неизображение как изображение
+            self.assertEqual(Image.objects.all().count(), 1)
+
+
+    def test_post_invalid_image(self):
+        url = reverse('posts-list')
+        image = f'{self.path_img}test_image_1_6mb.jpeg'
+        with open(image, 'rb') as img:
+            data = {
+                'text': 'test post',
+                'post_images': img,
+            }
+            response = self.client_authentication.post(url, data=data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            # TODO грузит не валидное изображение
+            self.assertEqual(Image.objects.all().count(), 1)
+
+
+    def test_post_image_pil(self):
         url = reverse('posts-list')
         image1 = self.get_image_file('image.png')
         image2 = self.get_image_file('image2.png')
@@ -183,16 +210,15 @@ class ImageTests(APITestCase):
         }
         data = {
             'text': 'test post',
-            # 'post_images': {
-            #     'image1.png': image1,
+            'post_images': image1,
             #     'image2.png': image2,
             # },
         }
         response = self.client_authentication.post(url,
                                                    data=data,
                                                    headers=headers,
-                                                   format='json'
+                                                   # format='json'
                                                    )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # TODO Доделать тест. Тест не сохраняет картинку.
-        self.assertEqual(Image.objects.all().count(), 0)
+        self.assertEqual(Image.objects.all().count(), 1)
