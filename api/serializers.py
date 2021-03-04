@@ -23,17 +23,21 @@ class PostsSerializer(serializers.ModelSerializer):
         read_only_fields = ['pub_date']
 
     def create(self, validated_data):
-        post = Post.objects.create(**validated_data)
+        instance = Post.objects.create(**validated_data)
         files = self.context['request'].FILES.getlist('post_images')
+        img_for_save = []
         for file in files:
-            Image.objects.create(post=post, image=file)
-        return post
+            img_for_save.append(Image(post=instance, image=file))
+        Image.objects.bulk_create(img_for_save)
+        return instance
 
     def update(self, instance, validated_data):
         Image.objects.filter(post=instance).delete()
         files = self.context['request'].FILES.getlist('post_images')
+        img_for_save = []
         for file in files:
-            Image.objects.create(post=instance, image=file)
+            img_for_save.append(Image(post=instance, image=file))
+        Image.objects.bulk_create(img_for_save)
         raise_errors_on_nested_writes('update', self, validated_data)
         info = model_meta.get_field_info(instance)
         m2m_fields = []
